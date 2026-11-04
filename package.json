@@ -1,0 +1,69 @@
+{
+  "name": "dsh-theme-material",
+  "version": "0.4.2",
+  "description": "Theme skins for the DeepSeek Harness Web GUI — one token engine derives the 126 --dsw-* color tokens per appearance from ten inputs, light and dark, switched in-app. Eight skins: Material Palenight/Ocean/Darker/Lighter, Catppuccin Latte, Vitesse Light, Snazzy Light, GitHub Light Gray.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "theme",
+    "skin",
+    "tokens",
+    "material",
+    "palenight"
+  ],
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heinrich0505/dsh-theme-material.git"
+  },
+  "homepage": "https://github.com/heinrich0505/dsh-theme-material#readme",
+  "bugs": {
+    "url": "https://github.com/heinrich0505/dsh-theme-material/issues"
+  },
+  "author": "heinrich0505",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "src",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    },
+    "engines": {
+      "dsh": ">=0.2.0-rc.1 <0.3.0-0"
+    },
+    "compatibility": {
+      "dsh": ">=0.2.0-rc.1 <0.3.0-0",
+      "platform": [
+        "web"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify": "node scripts/build.mjs && node scripts/verify.mjs && node scripts/smoke.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "repro": "node scripts/repro.mjs",
+    "test:red": "node scripts/red-check.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

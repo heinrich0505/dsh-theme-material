@@ -1,0 +1,17 @@
+# 依赖
+node_modules/
+
+# 打包产物：发布时挂在 GitHub Release 上，不进版本库
+*.tgz
+
+# 本地生成的研究资料与预览图（用 scripts/ 里的脚本可以重新生成）
+survey/
+.survey-cache/
+
+# 项目状态记录，只在本机使用
+project_memory/
+
+# 编辑器与系统杂项
+.DS_Store
+Thumbs.db
+*.log

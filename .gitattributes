@@ -1,0 +1,6 @@
+# 统一用 LF：这个仓库在 Windows 上开发，但安装和审阅都可能在别的系统上
+* text=auto eol=lf
+
+# 图片按二进制处理，不做换行转换
+*.png binary
+*.jpg binary

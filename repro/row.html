@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设置行预览</title>
+<style>
+  /* 模拟真实环境：body 上的 --dsw-* token（取素白皮肤的一组值） */
+  :root {
+    --dsw-alias-label-primary: #1b1b1f;
+    --dsw-alias-label-secondary: #5b5b64;
+    --dsw-alias-label-tertiary: #8a8a93;
+    --dsw-alias-border-l1: rgba(0, 0, 0, .08);
+    --dsw-alias-border-l2: rgba(0, 0, 0, .12);
+    --dsw-alias-state-business-primary: #0071e3;
+    --dsw-alias-bg-base: #fff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 32px 40px; background: #fff; color: var(--dsw-alias-label-primary);
+    font: 14px/22px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .panel { max-width: 860px; }
+
+  /* 以下三条是外壳自己的行样式（取自 ui-settings-general 的编译产物），
+     用来做"上下邻居"，好判断我们的行是否协调。 */
+  .shellRow {
+    display: flex; justify-content: space-between; align-items: center; gap: 24px;
+    padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2);
+  }
+  .shellLabel { color: var(--dsw-alias-label-primary); font-size: 14px; line-height: 20px; }
+  .shellDesc { color: var(--dsw-alias-label-secondary); margin-top: 4px; font-size: 12px; line-height: 18px; }
+  .shellValue { color: var(--dsw-alias-label-secondary); font-size: 14px; }
+
+  /* 官方「外观」行：三个方块 */
+  .appearance { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2); }
+  .cubes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .cube {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    padding: 18px 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; font-size: 14px;
+  }
+  .cubeOn { border-color: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-state-business-primary); }
+
+  #root { }
+</style>
+</head>
+<body>
+<div class="panel">
+  <!-- 上邻居：官方「外观」行 -->
+  <div class="appearance">
+    <div class="shellLabel">外观</div>
+    <div class="cubes">
+      <div class="cube">☀ 浅色</div>
+      <div class="cube cubeOn">☾ 深色</div>
+      <div class="cube">▢ 跟随系统</div>
+    </div>
+  </div>
+
+  <!-- 我们要验证的那一行 -->
+  <div id="root"></div>
+
+  <!-- 下邻居：字号大小 -->
+  <div class="shellRow">
+    <div>
+      <div class="shellLabel">字号大小</div>
+      <div class="shellDesc">仅影响会话内容的字号</div>
+    </div>
+    <div class="shellValue">14 px ⌄</div>
+  </div>
+
+  <!-- 再下一个 -->
+  <div class="shellRow">
+    <div>
+      <div class="shellLabel">工作步骤展示</div>
+      <div class="shellDesc">选择希望看到多少工具调用细节</div>
+    </div>
+    <div class="shellValue">简洁 ⌄</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script>
+const captured = []
+const themeService = { overrideTokens() { return () => {} }, setTheme() {} }
+const slots = {
+  register(options, component) { captured.push({ options, component }); return () => {} },
+  inject(name, register) { register(); return () => {} },
+}
+const ctx = {
+  get: (name) => (name === 'theme' ? themeService : name === 'slots' ? slots : undefined),
+  effect(fn) { const c = fn(); return c },
+}
+const jsxRuntime = {
+  jsx: (type, props) => React.createElement(type, props),
+  jsxs: (type, props) => React.createElement(type, props),
+  Fragment: React.Fragment,
+}
+let loaded = null
+window.__ModuleLoader__ = { load(spec) { loaded = spec } }
+localStorage.setItem('dsh.theme-material.skin', 'palenight')
+</script>
+<script src="../client.js"></script>
+<script>
+const mod = loaded.factory((name) => {
+  if (name === 'react') return React
+  if (name === 'react/jsx-runtime') return jsxRuntime
+  throw new Error('unexpected require: ' + name)
+})
+mod.apply(ctx)
+const row = captured[0]
+const mount = document.getElementById('root')
+if (!row) {
+  mount.textContent = '设置行没有注册'
+} else {
+  ReactDOM.createRoot(mount).render(React.createElement(row.component, {}))
+  window.__ROW__ = row.options.id + '@' + row.options.order
+}
+</script>
+</body>
+</html>

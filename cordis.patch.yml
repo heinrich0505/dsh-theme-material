@@ -1,0 +1,10 @@
+# dsh-theme-material bundle patch.
+#
+# 只贡献一个宿主行。主题本身在浏览器侧：它通过 package.json 里的
+# `dsh.client` 清单下发，这一行只是让 bundle 能被列出、启用、整包卸载。
+#
+# patch 会整体替换目标行的 config，所以这里只写追加的 insert 行，
+# 绝不覆盖外壳已经发出的行。
+- insert:
+    - id: theme-material
+      name: dsh-theme-material

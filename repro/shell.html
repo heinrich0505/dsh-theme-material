@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>repro</title></head>
+<body>
+<script>
+/**
+ * 最小复现外壳：照着 DSH 的真实行为模拟两件事
+ *   1. `ctx.theme` 服务：overrideTokens / setTheme / getTheme，publish 时同步通知订阅者
+ *   2. ui-layout 的 presenter.apply()：写 root color-scheme、写 body[data-ds-dark-theme]、
+ *      把 snapshot 里的 token 写成 body 的内联自定义属性、最后用 getComputedStyle 取背景色
+ *
+ * 然后把 dsh-theme-material 的 client.js 装进来，统计它触发了几次 overrideTokens。
+ * 正常情况：个位数。死循环：几百上千次，页面直接卡住。
+ */
+const PROBE = { overridden: 0, applied: 0, mutations: 0, errors: [], start: Date.now() }
+window.__PROBE__ = PROBE
+
+// ---- 模拟 ui-layout 的 presenter ----
+const DARK_ATTR = 'data-ds-dark-theme'
+const meta = document.createElement('meta')
+meta.name = 'theme-color'
+let appliedTokens = []
+
+function presenterApply(snapshot) {
+  PROBE.applied += 1
+  const scheme = snapshot.active.colorScheme
+  document.documentElement.style.colorScheme = scheme
+  document.documentElement.setAttribute('data-dsh-theme-source', snapshot.preference === 'system' ? 'system' : scheme)
+  const body = document.body
+  if (scheme === 'dark') body.setAttribute(DARK_ATTR, '')
+  else body.removeAttribute(DARK_ATTR)
+  for (const name of appliedTokens) body.style.removeProperty(name)
+  appliedTokens = []
+  for (const [name, value] of Object.entries(snapshot.active.tokens)) {
+    body.style.setProperty(name, value)
+    appliedTokens.push(name)
+  }
+  // 真实实现里有这一行：强制取计算样式，会让浏览器立即重排
+  meta.content = getComputedStyle(body).backgroundColor
+  if (!meta.isConnected) document.head.append(meta)
+}
+
+// ---- 模拟 ctx.theme ----
+const subscribers = []
+let preference = 'system'           // 用户真实状态：system
+let overrides = new Map()
+// 用户环境：系统是浅色
+const systemDark = false
+
+function currentColorScheme() {
+  if (preference === 'dark') return 'dark'
+  if (preference === 'light') return 'light'
+  return systemDark ? 'dark' : 'light'
+}
+
+function buildSnapshot() {
+  const tokens = {}
+  for (const layer of overrides.values()) {
+    for (const [name, pair] of Object.entries(layer.tokens)) {
+      tokens[name] = currentColorScheme() === 'dark' ? pair.dark : pair.light
+    }
+  }
+  return { preference, active: { colorScheme: currentColorScheme(), tokens } }
+}
+
+function publish() {
+  const snapshot = buildSnapshot()
+  for (const fn of subscribers) fn(snapshot)
+}
+
+const themeService = {
+  overrideTokens(source, tokens) {
+    PROBE.overridden += 1
+    if (PROBE.overridden > 500) throw new Error('overrideTokens 调用次数失控（>500），判定为死循环')
+    overrides.set(source, { tokens })
+    publish()
+    return () => { overrides.delete(source); publish() }
+  },
+  setTheme(id) {
+    preference = id
+    publish()
+  },
+  getTheme() {
+    return buildSnapshot()
+  },
+  subscribe(fn) {
+    subscribers.push(fn)
+    return () => { const i = subscribers.indexOf(fn); if (i >= 0) subscribers.splice(i, 1) }
+  },
+}
+subscribers.push(presenterApply)
+
+// ---- 模拟 cordis 客户端上下文 ----
+const effects = []
+const ctx = {
+  get: (name) => (name === 'theme' ? themeService : undefined),
+  effect(fn) {
+    const cleanup = fn()
+    if (typeof cleanup === 'function') effects.push(cleanup)
+    return () => cleanup?.()
+  },
+}
+
+// 统计 body 属性变化次数，用来判断 observer 是否在自激
+new MutationObserver(() => { PROBE.mutations += 1 }).observe(document.body, {
+  attributes: true,
+  attributeFilter: [DARK_ATTR],
+})
+
+// ---- 加载被测插件 ----
+window.__ModuleLoader__ = {
+  load({ id, factory }) {
+    try {
+      const mod = factory((name) => { throw new Error('unexpected require: ' + name) })
+      mod.apply(ctx)
+      PROBE.loaded = true
+      PROBE.overriddenAfterApply = PROBE.overridden
+    } catch (error) {
+      PROBE.errors.push(String(error && error.stack ? error.stack : error))
+    }
+  },
+}
+
+// 用户真实状态：上次选的是 ocean
+localStorage.setItem('dsh.theme-material.skin', 'ocean')
+</script>
+<script src="../client.js"></script>
+<script>
+// 给同步循环一点时间暴露：之后打个标记供 CDP 读取
+setTimeout(() => {
+  PROBE.done = true
+  PROBE.elapsedMs = Date.now() - PROBE.start
+}, 600)
+</script>
+</body>
+</html>
